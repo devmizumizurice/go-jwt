@@ -2,4 +2,4 @@
 
 Just for my test
 
-![Link](https://x.com/appmizumizurice)
+[Social](https://x.com/appmizumizurice)
