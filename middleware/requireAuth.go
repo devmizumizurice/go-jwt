@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -10,9 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func RequireAccessToken(c *gin.Context) {
-	fmt.Println("Im middleware")
-
+func RequireToken(c *gin.Context) {
 	token, err := c.Cookie("access_token")
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "MISSING_TOKEN"})
@@ -37,5 +34,4 @@ func RequireAccessToken(c *gin.Context) {
 	c.Set("sub", claims["sub"])
 
 	c.Next()
-
 }

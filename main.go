@@ -18,11 +18,12 @@ func main() {
 
 	db := initializers.GetDB()
 	authController := wire.InitializeAuthController(db)
+	userController := wire.InitializeUserController(db)
 
 	r.POST("/signup", authController.SignUp)
 	r.POST("/signin", authController.SignIn)
 	r.POST("/refresh", authController.RefreshToken)
-	r.GET("/validate", middleware.RequireAccessToken, authController.Validate)
+	r.GET("/validate", middleware.RequireToken, userController.Validate)
 
 	r.Run()
 

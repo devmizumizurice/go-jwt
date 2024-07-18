@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,18 +10,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AuthController interface {
+type AuthControllerInterface interface {
 	SignUp(c *gin.Context)
 	SignIn(c *gin.Context)
 	RefreshToken(c *gin.Context)
-	Validate(c *gin.Context)
 }
 
 type authController struct {
-	userService services.UserServiceInterface
+	userService services.AuthServiceInterface
 }
 
-func NewAuthController(userService services.UserServiceInterface) AuthController {
+func NewAuthController(userService services.AuthServiceInterface) AuthControllerInterface {
 	return &authController{userService: userService}
 }
 
@@ -85,7 +83,6 @@ func (ac *authController) SignIn(c *gin.Context) {
 	accessTokenLifeMinutes, err := strconv.Atoi(os.Getenv("ACCESS_TOKEN_VALIDATE_MINUTES"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-
 	}
 
 	refreshTokenLifeDays, err := strconv.Atoi(os.Getenv("REFRESH_TOKEN_VALIDATE_DAYS"))
@@ -100,12 +97,40 @@ func (ac *authController) SignIn(c *gin.Context) {
 }
 
 func (ac *authController) RefreshToken(c *gin.Context) {
-	// TODO:
-}
+	token, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "MISSING_TOKEN"})
+		return
+	}
+	newToken, err := ac.userService.RefreshToken(token)
 
-func (ac *authController) Validate(c *gin.Context) {
-	sub, _ := c.Get("sub")
-	c.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("I'm logged in %s", sub),
-	})
+	if err != nil {
+		if err.Error() == "USER_NOT_FOUND" {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else if err.Error() == "EXPIRED_TOKEN" || err.Error() == "UNAUTHORIZED" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.SetSameSite(http.SameSiteLaxMode)
+	accessTokenLifeMinutes, err := strconv.Atoi(os.Getenv("ACCESS_TOKEN_VALIDATE_MINUTES"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	refreshTokenLifeDays, err := strconv.Atoi(os.Getenv("REFRESH_TOKEN_VALIDATE_DAYS"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+
+	}
+	c.SetCookie("access_token", newToken.AccessToken, accessTokenLifeMinutes*60, "", "", false, true)
+	c.SetCookie("refresh_token", newToken.RefreshToken, refreshTokenLifeDays*24*60*60, "", "", false, true)
+	c.JSON(http.StatusNoContent, gin.H{})
+
 }

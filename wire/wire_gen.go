@@ -15,9 +15,16 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeAuthController(db *gorm.DB) controllers.AuthController {
+func InitializeAuthController(db *gorm.DB) controllers.AuthControllerInterface {
+	userRepositoryInterface := repositories.NewUserRepository(db)
+	authServiceInterface := services.NewAuthService(userRepositoryInterface)
+	authControllerInterface := controllers.NewAuthController(authServiceInterface)
+	return authControllerInterface
+}
+
+func InitializeUserController(db *gorm.DB) controllers.UserControllerInterface {
 	userRepositoryInterface := repositories.NewUserRepository(db)
 	userServiceInterface := services.NewUserService(userRepositoryInterface)
-	authController := controllers.NewAuthController(userServiceInterface)
-	return authController
+	userControllerInterface := controllers.NewUserController(userServiceInterface)
+	return userControllerInterface
 }
