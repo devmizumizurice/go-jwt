@@ -56,6 +56,22 @@ func (s *authService) CreateUser(user *models.User) (*response.User, error) {
 	return userResponse, nil
 }
 
+func issueToken(userId string) (*response.Token, error) {
+	accessToken, err := utils.GenerateToken(userId, false)
+	if err != nil {
+		return nil, errors.New("ERROR_WHILE_SIGNATURE")
+	}
+	refreshToken, err := utils.GenerateToken(userId, true)
+	if err != nil {
+		return nil, errors.New("ERROR_WHILE_SIGNATURE")
+	}
+
+	return &response.Token{
+		AccessToken:  *accessToken,
+		RefreshToken: *refreshToken,
+	}, nil
+}
+
 func (s *authService) VerifyUserEmail(email string, password string) (*response.Token, error) {
 	user, err := s.userRepository.FindByEmail(email)
 	if err != nil {
@@ -68,28 +84,13 @@ func (s *authService) VerifyUserEmail(email string, password string) (*response.
 		return nil, errors.New("INVALID_EMAIL_OR_PASSWORD")
 	}
 
-	accessToken, err := utils.GenerateToken(user.ID, false)
-	if err != nil {
-		return nil, errors.New("ERROR_WHILE_SIGNATURE")
-	}
-	refreshToken, err := utils.GenerateToken(user.ID, true)
-	if err != nil {
-		return nil, errors.New("ERROR_WHILE_SIGNATURE")
-	}
-
-	res := &response.Token{
-		AccessToken:  *accessToken,
-		RefreshToken: *refreshToken,
-	}
-
-	return res, nil
+	return issueToken(user.ID)
 }
 
 func (s *authService) RefreshToken(refreshToken string) (*response.Token, error) {
 	parsedToken, err := utils.VerifyToken(refreshToken)
 	if err != nil {
 		return nil, errors.New("UNAUTHORIZED")
-
 	}
 
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
@@ -105,19 +106,5 @@ func (s *authService) RefreshToken(refreshToken string) (*response.Token, error)
 		return nil, errors.New("USER_NOT_FOUND")
 	}
 
-	newAccessToken, err := utils.GenerateToken(user.ID, false)
-	if err != nil {
-		return nil, errors.New("ERROR_WHILE_SIGNATURE")
-	}
-	newRefreshToken, err := utils.GenerateToken(user.ID, true)
-	if err != nil {
-		return nil, errors.New("ERROR_WHILE_SIGNATURE")
-	}
-
-	res := &response.Token{
-		AccessToken:  *newAccessToken,
-		RefreshToken: *newRefreshToken,
-	}
-
-	return res, nil
+	return issueToken(user.ID)
 }

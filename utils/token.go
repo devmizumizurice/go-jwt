@@ -11,26 +11,30 @@ import (
 
 func GenerateToken(userId string, isRefresh bool) (*string, error) {
 	var exp int64
+	var secret []byte
 	if !isRefresh {
 		accessTokenLifeTime, err := strconv.Atoi(os.Getenv("ACCESS_TOKEN_VALIDATE_MINUTES"))
-		exp = time.Now().Add(time.Minute * time.Duration(accessTokenLifeTime)).Unix()
 		if err != nil {
 			return nil, err
 		}
+		exp = time.Now().Add(time.Minute * time.Duration(accessTokenLifeTime)).Unix()
+		secret = []byte(os.Getenv("ACCESS_TOKEN_SECRET"))
+
 	} else {
 		refreshTokenLifeTime, err := strconv.Atoi(os.Getenv("REFRESH_TOKEN_VALIDATE_DAYS"))
 		if err != nil {
 			return nil, err
 		}
 		exp = time.Now().Add(time.Hour * 24 * time.Duration(refreshTokenLifeTime)).Unix()
-	}
+		secret = []byte(os.Getenv("REFRESH_TOKEN_SECRET"))
 
+	}
 	claims := jwt.MapClaims{
 		"sub": userId,
 		"exp": exp,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET_KEY")))
+	tokenString, err := token.SignedString(secret)
 	if err != nil {
 		return nil, err
 	}
